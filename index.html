@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiro a Walter, GOTY EDITION</title>
+
+    <link rel="icon" href="walter.png" type="image/png">
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0; /* Color de fondo del cuerpo */
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            padding: 0;
+        }
+        h1{
+            font-size: 35px;
+        }
+        canvas {
+            border-radius: 0px;
+            cursor: none;
+            background-image: url('walter.png'); /* Agregar la imagen de fondo solo al canvas */
+            background-size: cover; /* Asegura que la imagen cubra todo el fondo del canvas */
+            background-position: center; /* Centra la imagen en el canvas */
+            background-color: #2d640d;
+            box-shadow: 20px 20px 0px 5px #153007;
+
+            
+        }
+        
+        .custom-cursor {
+            position: absolute;
+            width: 60px; /* Ancho de la cruz */
+            height: 60px; /* Alto de la cruz */
+            pointer-events: none; /* Para que no interfiera con otros elementos */
+            transform: translate(-50%, -50%); /* Centrar el cursor */
+        }
+
+        .horizontal-line {
+            position: absolute;
+            width: 100%; /* Abarca todo el ancho */
+            height: 4px; /* Grosor de la línea horizontal */
+            background-color: rgb(255, 0, 0); /* Color de la línea */
+            top: 50%; /* Centrado verticalmente */
+            left: 0; /* Inicia desde el lado izquierdo */
+        }
+
+        .vertical-line {
+            position: absolute;
+            height: 100%; /* Abarca todo el alto */
+            width: 4px; /* Grosor de la línea vertical */
+            background-color: rgb(255, 0, 0); /* Color de la línea */
+            left: 50%; /* Centrado horizontalmente */
+            top: 0; /* Inicia desde la parte superior */
+        }
+        .foto{
+            max-width: auto;
+            max-height: 32px;
+        }
+        
+    </style>
+</head>
+<body>
+    <h1>Tiro a W<img src="walter.png" class="foto">lter</h1>
+    <div class="custom-cursor" id="cursor">
+        <div class="horizontal-line"></div>
+        <div class="vertical-line"></div>
+    </div>
+    <canvas id="gameCanvas" width="800" height="550"></canvas>
+
+    <script>
+        const cursor = document.getElementById('cursor');
+
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.pageX + 'px'; // Posiciona el cursor horizontalmente
+            cursor.style.top = e.pageY + 'px';  // Posiciona el cursor verticalmente
+        });
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Cargar imágenes
+        const ballImageWalter = new Image();
+        const ballImageMeme = new Image();
+        ballImageWalter.src = 'walter.png';
+        ballImageMeme.src = 'jesse.png'; // Asegúrate de tener esta imagen
+
+        const balls = [];
+        const explosions = [];
+        let score = 0;
+
+        // Crear una bola
+        function createBall() {
+            const radius = 50;
+            const x = Math.random() * (canvas.width - radius * 2) + radius;
+            const y = Math.random() * (canvas.height - radius * 2) + radius;
+            const speedX = Math.random() * 4 + 1; // Velocidad horizontal
+            const speedY = Math.random() * 4 + 1; // Velocidad vertical
+            const image = Math.random() < 0.5 ? ballImageWalter : ballImageMeme; // Asigna la imagen aleatoriamente
+            balls.push({ x, y, radius, speedX, speedY, image });
+        }
+        // Clase de explosión
+        class Explosion {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 10; // Radio inicial
+                this.alpha = 1; // Opacidad inicial
+                this.lifeSpan = 15; // Duración de la explosión
+            }
+
+            update() {
+                this.radius += 5; // Aumenta el tamaño de la explosión
+                this.alpha -= 1 / this.lifeSpan; // Disminuye la opacidad
+            }
+
+            isAlive() {
+                return this.alpha > 0; // La explosión está viva si tiene opacidad
+            }
+        }
+
+        // Dibujar todas las bolas
+        function drawBalls() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpia el lienzo
+
+            // Dibuja bolas
+            balls.forEach(ball => {
+                // Dibuja un borde para la bola
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(196, 190, 26)'; // Color del borde
+                ctx.lineWidth = 8; // Grosor del borde
+                ctx.stroke();
+                ctx.closePath();
+
+                // Dibuja la imagen de la bola
+                const imageSize = 70;
+                ctx.drawImage(ball.image, ball.x - imageSize / 2, ball.y - imageSize / 2, imageSize, imageSize);
+            });
+
+            // Dibuja explosiones
+            explosions.forEach(explosion => {
+                ctx.beginPath();
+                ctx.arc(explosion.x, explosion.y, explosion.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 0, 0, ${explosion.alpha})`; // Color naranja con opacidad
+                ctx.fill();
+                ctx.closePath();
+                explosion.update(); // Actualiza la explosión
+            });
+
+            // Filtra explosiones muertas
+            explosions.filter(explosion => explosion.isAlive());
+
+            // Establece el color y la fuente para el texto
+            ctx.fillStyle = 'black'; // Color de texto
+            ctx.font = '40px Arial'; // Fuente del texto
+
+            // Mide el ancho del texto
+            const text = `Puntos:${score}`;
+            const textWidth = ctx.measureText(text).width;
+
+            // Calcula la posición x para centrar el texto
+            const x = (canvas.width - textWidth) / 2; // Centra el texto
+
+            // Dibuja el texto centrado
+            ctx.fillText(text, x, 30); // Dibuja el texto de puntuación
+        }
+
+        // Detectar colisión entre dos bolas
+        function detectBallCollision(ballA, ballB) {
+            const dx = ballA.x - ballB.x;
+            const dy = ballA.y - ballB.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            return distance < (ballA.radius + ballB.radius);
+        }
+
+        // Manejar colisiones entre bolas
+        function handleBallCollisions() {
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    if (detectBallCollision(balls[i], balls[j])) {
+                        // Invertir velocidades para simular un rebote
+                        const tempSpeedX = balls[i].speedX;
+                        const tempSpeedY = balls[i].speedY;
+                        balls[i].speedX = balls[j].speedX;
+                        balls[i].speedY = balls[j].speedY;
+                        balls[j].speedX = tempSpeedX;
+                        balls[j].speedY = tempSpeedY;
+
+                        // Separar las bolas
+                        const overlap = (balls[i].radius + balls[j].radius) - Math.sqrt((balls[i].x - balls[j].x) ** 2 + (balls[i].y - balls[j].y) ** 2);
+                        const angle = Math.atan2(balls[j].y - balls[i].y, balls[j].x - balls[i].x);
+                        balls[i].x -= Math.cos(angle) * overlap / 2;
+                        balls[i].y -= Math.sin(angle) * overlap / 2;
+                        balls[j].x += Math.cos(angle) * overlap / 2;
+                        balls[j].y += Math.sin(angle) * overlap / 2;
+                    }
+                }
+            }
+        }
+
+        // Detectar colisión con el tiro
+        // Inicializa el puntaje
+
+function shoot(x, y) {
+    let hit = false; // Variable para determinar si hubo un impacto
+
+    for (let i = 0; i < balls.length; i++) {
+        const ball = balls[i];
+        const dx = ball.x - x;
+        const dy = ball.y - y;
+        if (Math.sqrt(dx * dx + dy * dy) < ball.radius) {
+            explosions.push(new Explosion(ball.x, ball.y)); // Crea una explosión en la posición de la bola
+            balls.splice(i, 1); // Elimina la bola
+            score++; // Aumenta el puntaje si impacta
+            hit = true; // Marca que hubo un impacto
+            break; // Sale del bucle si se impacta una bola
+        }
+    }
+
+    // Si no hubo un impacto, decrementa el puntaje
+    if (!hit) {
+        score--; // Decrementa el puntaje en 1 si falla
+    }
+
+    // Aquí podrías agregar lógica para mostrar el puntaje actualizado si es necesario
+}
+
+
+        // Capturar el clic del ratón
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+            shoot(mouseX, mouseY);
+        });
+
+        // Actualizar el movimiento de las bolas
+        function updateBalls() {
+            balls.forEach(ball => {
+                ball.x += ball.speedX;
+                ball.y += ball.speedY;
+
+                // Colisiones con los bordes del lienzo
+                if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+                    ball.speedX *= -1; // Rebotar en el eje X
+                }
+                if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                    ball.speedY *= -1; // Rebotar en el eje Y
+                }
+            });
+        }
+
+        // Actualizar el juego
+        let continuar = false; 
+        function update() {
+            if (balls.length < 6) {
+                createBall();
+            }
+            updateBalls();
+            handleBallCollisions(); // Verificar colisiones entre bolas
+            drawBalls();
+            requestAnimationFrame(update);
+            let result;
+
+                    if (score > -2) {
+                continuar = false; // Reinicia continuar si el puntaje es positivo
+            }
+            if (score < -2) {
+                continuar = false; // Reinicia continuar si el puntaje es positivo
+            }
+
+            // Si el puntaje es -2 o menor y no se ha confirmado aún
+            if (score == -2 && !continuar) { 
+                result = confirm("Jesse, vamos a necesitar un abogado."); 
+                continuar = true; // Cambia a true para que no se muestre nuevamente
+                
+            }
+
+            // Cierra la ventana si se confirma
+            if (result === true) {
+                window.close(0); 
+            }
+        }
+        
+
+        // Iniciar el juego
+        let imagesLoaded = 0;
+        ballImageWalter.onload = () => {
+            imagesLoaded++;
+            if (imagesLoaded === 2) update(); // Iniciar el juego solo después de que ambas imágenes se hayan cargado
+        };
+        ballImageMeme.onload = () => {
+            imagesLoaded++;
+            if (imagesLoaded === 2) update(); // Iniciar el juego solo después de que ambas imágenes se hayan cargado
+        };
+        
+        
+    </script>
+</body>
+</html>
